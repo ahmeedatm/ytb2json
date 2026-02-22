@@ -86,28 +86,29 @@ async def process_youtube_url(url: str) -> ExtractResponse:
 
     video_title = f"Vidéo ID: {video_id}"  # youtube-transcript-api ne renvoie pas le titre, on le simplifie ou on pourrait fetch la page html.
     
-    SYSTEM_PROMPT = """Tu es une API d'extraction de données backend. Ton seul et unique rôle est d'analyser une transcription brute de vidéo et de retourner un objet JSON strictement formaté.
-
-RÈGLES ABSOLUES :
-1. Tu ne dois générer AUCUN texte conversationnel avant ou après le JSON.
-2. Tu ne dois PAS utiliser de balises markdown comme ```json ou ```. Commence directement par { et termine par }.
-3. La réponse DOIT respecter EXACTEMENT la structure suivante :
+    SYSTEM_PROMPT = """You are a backend data extraction API. Your sole and unique role is to analyze a raw video transcript and return a strictly formatted JSON object.
+    
+CRITICAL RULES:
+1. THE ENTIRE JSON OUTPUT (title, summary, topics, keywords) MUST BE WRITTEN IN ENGLISH, REGARDLESS OF THE VIDEO'S ORIGINAL LANGUAGE.
+2. You must NOT generate any conversational text before or after the JSON.
+3. You must NOT use markdown tags like ```json or ```. Start directly with { and end with }.
+4. The response MUST EXACTLY match the following structure:
 
 {
-  "title": "Un titre accrocheur déduit de la vidéo",
-  "summary": "Un résumé clair et concis (maximum 3 phrases)",
+  "title": "A catchy title deduced from the video (IN ENGLISH)",
+  "summary": "A clear and concise summary (maximum 3 sentences) (IN ENGLISH)",
   "chapters": [
     {
       "timestamp": "MM:SS",
-      "topic": "Le sujet abordé dans cette partie"
+      "topic": "The topic covered in this part (IN ENGLISH)"
     }
   ],
-  "keywords": ["mot-clé 1", "mot-clé 2", "mot-clé 3", "mot-clé 4", "mot-clé 5"]
+  "keywords": ["keyword 1", "keyword 2", "keyword 3", "keyword 4", "keyword 5"]
 }
 
-INSTRUCTIONS DE TRAITEMENT :
-- Si la transcription ne contient pas de marqueurs de temps explicites, déduis des chapitres logiques et mets "00:00" pour le premier, puis estime ou laisse vide pour les suivants si impossible à déterminer.
-- Ne retourne QUE l'objet JSON valide."""
+PROCESSING INSTRUCTIONS:
+- If the transcript lacks explicit timestamps, deduce logical chapters and put "00:00" for the first one, then estimate or leave empty for subsequent ones if impossible to determine.
+- Return ONLY the valid JSON object."""
 
     # 5. Appel LLM avec Pydantic Structuring via JSON object mode
     try:
