@@ -28,22 +28,16 @@ def extract_transcript_sync(video_id: str) -> str:
     avec prise en charge optionnelle d'un proxy pour éviter les bans IP des Datacenters (Google Cloud, AWS).
     """
     try:
-        # Configuration des proxys si l'URL est fournie dans l'environnement
-        proxies = None
+        # Initialiser l'API avec un proxy si configuré
         if settings.proxy_url:
-            proxies = {
-                "http": settings.proxy_url,
-                "https": settings.proxy_url
-            }
-
-        # Initialiser l'API
-        ytt_api = YouTubeTranscriptApi()
-        
-        # Récupérer la liste des transcripts (avec proxy si défini)
-        if proxies:
-            transcript_list = ytt_api.list(video_id, proxies=proxies)
+            from youtube_transcript_api.proxies import GenericProxyConfig
+            proxy = GenericProxyConfig(http_url=settings.proxy_url, https_url=settings.proxy_url)
+            ytt_api = YouTubeTranscriptApi(proxy_config=proxy)
         else:
-            transcript_list = ytt_api.list(video_id)
+            ytt_api = YouTubeTranscriptApi()
+        
+        # Récupérer la liste des transcripts
+        transcript_list = ytt_api.list(video_id)
         
         try:
             # Essayer d'abord de récupérer le transcript (en français ou anglais)
