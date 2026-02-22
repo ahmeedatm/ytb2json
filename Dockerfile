@@ -28,4 +28,5 @@ ENV PORT=8000
 EXPOSE $PORT
 
 # Commande pour démarrer l'application avec Uvicorn sur le port fourni par Google Cloud Run
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# On utilise la forme "shell" (sans les crochets []) pour que $PORT soit correctement évalué au démarrage par Bash/sh
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
