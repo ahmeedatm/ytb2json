@@ -24,14 +24,26 @@ def extract_video_id(url: str) -> str:
 
 def extract_transcript_sync(video_id: str) -> str:
     """
-    Exécute youtube-transcript-api de manière synchrone pour extraire les sous-titres.
+    Exécute youtube-transcript-api de manière synchrone pour extraire les sous-titres,
+    avec prise en charge optionnelle d'un proxy pour éviter les bans IP des Datacenters (Google Cloud, AWS).
     """
     try:
+        # Configuration des proxys si l'URL est fournie dans l'environnement
+        proxies = None
+        if settings.proxy_url:
+            proxies = {
+                "http": settings.proxy_url,
+                "https": settings.proxy_url
+            }
+
         # Initialiser l'API
         ytt_api = YouTubeTranscriptApi()
         
-        # Récupérer la liste des transcripts
-        transcript_list = ytt_api.list(video_id)
+        # Récupérer la liste des transcripts (avec proxy si défini)
+        if proxies:
+            transcript_list = ytt_api.list(video_id, proxies=proxies)
+        else:
+            transcript_list = ytt_api.list(video_id)
         
         try:
             # Essayer d'abord de récupérer le transcript (en français ou anglais)
@@ -50,7 +62,7 @@ def extract_transcript_sync(video_id: str) -> str:
             text = " ".join([item['text'] for item in res])
         return text
     except Exception as e:
-        raise ValueError(f"Impossible d'extraire les sous-titres : {str(e)}")
+        raise ValueError(f"Impossible d'extraire les sous-titres : \n{str(e)}")
 
 
 async def process_youtube_url(url: str) -> ExtractResponse:
