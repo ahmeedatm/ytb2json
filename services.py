@@ -31,7 +31,10 @@ def extract_transcript_sync(video_id: str) -> str:
         # Initialiser l'API avec un proxy si configuré
         if settings.proxy_url:
             from youtube_transcript_api.proxies import GenericProxyConfig
-            proxy = GenericProxyConfig(http_url=settings.proxy_url, https_url=settings.proxy_url)
+            # On formate l'URL "http://" si l'utilisateur n'a passé que ses identifiants bruts (ex: IPRoyal)
+            formatted_proxy = settings.proxy_url if settings.proxy_url.startswith("http") else f"http://{settings.proxy_url}"
+            # IPRoyal exige de se connecter à son proxy via HTTP même pour HTTPS (cf. requetes requests)
+            proxy = GenericProxyConfig(http_url=formatted_proxy, https_url=formatted_proxy)
             ytt_api = YouTubeTranscriptApi(proxy_config=proxy)
         else:
             ytt_api = YouTubeTranscriptApi()
