@@ -1,0 +1,6 @@
+fastapi[all]>=0.111.0
+uvicorn>=0.30.0
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+openai>=1.35.0
+yt-dlp>=2024.7.9
