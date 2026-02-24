@@ -71,18 +71,24 @@ async def process_youtube_url(url: str) -> ExtractResponse:
     video_id = extract_video_id(url)
     
     # 1. Extraire les sous-titres via youtube-transcript-api dans un ThreadPoolExecutor pour ne pas bloquer l'Event Loop
+    # Timeout configurable via EXTRACT_TIMEOUT dans .env (défaut 12s en local, réduire en prod avec proxy)
     try:
         with ThreadPoolExecutor() as pool:
-            transcript_text = await loop.run_in_executor(pool, extract_transcript_sync, video_id)
+            transcript_text = await asyncio.wait_for(
+                loop.run_in_executor(pool, extract_transcript_sync, video_id),
+                timeout=settings.extract_timeout
+            )
+    except asyncio.TimeoutError:
+        raise ValueError(f"L'extraction des sous-titres a dépassé le délai imparti ({settings.extract_timeout}s). Réessayez.")
     except Exception as e:
         raise ValueError(f"Erreur lors de l'extraction des sous-titres: {str(e)}")
         
     if not transcript_text.strip():
         raise ValueError("Les sous-titres extraits sont vides.")
         
-    # Limiter grossièrement la taille du texte pour ne pas exploser le contexte (gpt-4o-mini a 128k context max, très large)
-    # Mais par prudence on peut clipper à ~80000 caractères.
-    transcript_text = transcript_text[:80000]
+    # Limiter le transcript à ~12 000 caractères pour laisser suffisamment de temps au LLM
+    # et rester sous le timeout de 15s de RapidAPI (~3-4k tokens, amplement suffisant pour un résumé).
+    transcript_text = transcript_text[:12000]
 
     video_title = f"Vidéo ID: {video_id}"  # youtube-transcript-api ne renvoie pas le titre, on le simplifie ou on pourrait fetch la page html.
     
@@ -111,17 +117,21 @@ PROCESSING INSTRUCTIONS:
 - Return ONLY the valid JSON object."""
 
     # 5. Appel LLM avec Pydantic Structuring via JSON object mode
+    # Timeout configurable via LLM_TIMEOUT dans .env (défaut 10s)
     try:
-        completion = await openai_client.chat.completions.create(
-            model="openai/gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system", 
-                    "content": SYSTEM_PROMPT
-                },
-                {"role": "user", "content": f"Titre de la vidéo : {video_title}\n\nSous-titres bruts:\n{transcript_text}"}
-            ],
-            response_format={"type": "json_object"},
+        completion = await asyncio.wait_for(
+            openai_client.chat.completions.create(
+                model="openai/gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system", 
+                        "content": SYSTEM_PROMPT
+                    },
+                    {"role": "user", "content": f"Titre de la vidéo : {video_title}\n\nSous-titres bruts:\n{transcript_text}"}
+                ],
+                response_format={"type": "json_object"},
+            ),
+            timeout=settings.llm_timeout
         )
         
         result_json = completion.choices[0].message.content
